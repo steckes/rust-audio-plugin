@@ -1,7 +1,7 @@
 use nih_plug::{prelude::*, util::db_to_gain};
 use std::sync::Arc;
 
-struct Gain {
+struct MyPlugin {
     params: Arc<GainParams>,
 }
 
@@ -11,7 +11,7 @@ struct GainParams {
     pub gain: FloatParam,
 }
 
-impl Default for Gain {
+impl Default for MyPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(GainParams::default()),
@@ -30,16 +30,16 @@ impl Default for GainParams {
                     max: 10.0,
                 },
             )
-            .with_smoother(SmoothingStyle::Logarithmic(50.0))
-            .with_unit(" dB")
-            .with_value_to_string(formatters::v2s_f32_rounded(2)),
+            .with_step_size(0.1)
+            .with_smoother(SmoothingStyle::Linear(50.0))
+            .with_unit(" dB"),
         }
     }
 }
 
-impl Plugin for Gain {
-    const NAME: &'static str = "Gain";
-    const VENDOR: &'static str = "stecktech";
+impl Plugin for MyPlugin {
+    const NAME: &'static str = "My Plugin";
+    const VENDOR: &'static str = "SteckTech";
     const URL: &'static str = "https://steck.tech";
     const EMAIL: &'static str = "info@steck.tech";
     const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -102,8 +102,8 @@ impl Plugin for Gain {
     fn deactivate(&mut self) {}
 }
 
-impl ClapPlugin for Gain {
-    const CLAP_ID: &'static str = "com.stecktech.gain";
+impl ClapPlugin for MyPlugin {
+    const CLAP_ID: &'static str = "com.stecktech.myplug";
     const CLAP_DESCRIPTION: Option<&'static str> = Some("An example plugin");
     const CLAP_MANUAL_URL: Option<&'static str> = Some(Self::URL);
     const CLAP_SUPPORT_URL: Option<&'static str> = None;
@@ -115,11 +115,11 @@ impl ClapPlugin for Gain {
     ];
 }
 
-impl Vst3Plugin for Gain {
-    const VST3_CLASS_ID: [u8; 16] = *b"GStecktechPlugin";
+impl Vst3Plugin for MyPlugin {
+    const VST3_CLASS_ID: [u8; 16] = *b"MStecktechPlugin";
     const VST3_SUBCATEGORIES: &'static [Vst3SubCategory] =
         &[Vst3SubCategory::Fx, Vst3SubCategory::Tools];
 }
 
-nih_export_clap!(Gain);
-nih_export_vst3!(Gain);
+nih_export_clap!(MyPlugin);
+nih_export_vst3!(MyPlugin);

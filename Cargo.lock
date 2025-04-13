@@ -62,13 +62,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "audio-plugin-test"
-version = "0.1.0"
-dependencies = [
- "nih_plug",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -329,6 +322,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3be647b768db090acb35d5ec5db2b0e1f1de11133ca123b9eacf5137868f892a"
 dependencies = [
  "adler2",
+]
+
+[[package]]
+name = "my-plugin"
+version = "0.1.0"
+dependencies = [
+ "nih_plug",
 ]
 
 [[package]]
