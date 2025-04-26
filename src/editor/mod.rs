@@ -27,48 +27,65 @@ pub(crate) fn create(
             ResizableWindow::new("res-wind")
                 .min_size(Vec2::new(128.0, 128.0))
                 .show(ctx, egui_state.as_ref(), |ui| {
-                    ui.heading("steck.tech");
+                    // Add padding around the entire UI content
+                    ui.add_space(20.0); // Top padding
 
-                    ui.add_space(10.0);
-
+                    // Add horizontal padding by using columns or spacing
                     ui.horizontal(|ui| {
-                        ui.label("Gain Slider");
+                        ui.add_space(20.0); // Left padding
+                        ui.vertical(|ui| {
+                            ui.heading("steck.tech");
 
-                        ui.add(
-                            Slider::from_get_set(-10.0..=10.0, |new_value| match new_value {
-                                Some(new_value) => {
-                                    setter.begin_set_parameter(&params.gain);
-                                    setter.set_parameter(&params.gain, new_value as f32);
-                                    setter.end_set_parameter(&params.gain);
+                            ui.add_space(10.0);
 
-                                    new_value
+                            ui.horizontal(|ui| {
+                                ui.label("Gain Slider");
+
+                                ui.add(
+                                    Slider::from_get_set(
+                                        -10.0..=10.0,
+                                        |new_value| match new_value {
+                                            Some(new_value) => {
+                                                setter.begin_set_parameter(&params.gain);
+                                                setter
+                                                    .set_parameter(&params.gain, new_value as f32);
+                                                setter.end_set_parameter(&params.gain);
+
+                                                new_value
+                                            }
+                                            None => params.gain.value() as f64,
+                                        },
+                                    )
+                                    .show_value(true)
+                                    .suffix(" dB"),
+                                );
+                            });
+
+                            ui.add_space(10.0);
+
+                            ui.horizontal(|ui| {
+                                ui.label("Peak Meter");
+                                let peak_meter = util::gain_to_db(
+                                    peak_meter.load(std::sync::atomic::Ordering::Relaxed),
+                                );
+                                ui.add(PeakMeter::new(-60.0..=0.0, peak_meter).show_label(false));
+                            });
+
+                            ui.add_space(10.0);
+
+                            ui.horizontal(|ui| {
+                                ui.label("Mute");
+                                let mut mute = params.mute.value();
+                                if toggle_ui(ui, &mut mute).changed() {
+                                    setter.begin_set_parameter(&params.mute);
+                                    setter.set_parameter(&params.mute, mute);
+                                    setter.end_set_parameter(&params.mute);
                                 }
-                                None => params.gain.value() as f64,
-                            })
-                            .show_value(true)
-                            .suffix(" dB"),
-                        );
-                    });
+                            });
 
-                    ui.add_space(10.0);
-
-                    ui.horizontal(|ui| {
-                        ui.label("Peak Meter");
-                        let peak_meter =
-                            util::gain_to_db(peak_meter.load(std::sync::atomic::Ordering::Relaxed));
-                        ui.add(PeakMeter::new(-60.0..=0.0, peak_meter).show_label(false));
-                    });
-
-                    ui.add_space(10.0);
-
-                    ui.horizontal(|ui| {
-                        ui.label("Mute");
-                        let mut mute = params.mute.value();
-                        if toggle_ui(ui, &mut mute).changed() {
-                            setter.begin_set_parameter(&params.mute);
-                            setter.set_parameter(&params.mute, mute);
-                            setter.end_set_parameter(&params.mute);
-                        }
+                            ui.add_space(20.0); // Bottom padding
+                        });
+                        ui.add_space(20.0); // Right padding
                     });
                 });
         },
