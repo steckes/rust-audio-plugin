@@ -2,11 +2,11 @@ use nih_plug::{prelude::*, util::db_to_gain};
 use std::sync::Arc;
 
 struct MyPlugin {
-    params: Arc<GainParams>,
+    params: Arc<PluginParams>,
 }
 
 #[derive(Params)]
-struct GainParams {
+struct PluginParams {
     #[id = "gain"]
     pub gain: FloatParam,
 }
@@ -14,12 +14,12 @@ struct GainParams {
 impl Default for MyPlugin {
     fn default() -> Self {
         Self {
-            params: Arc::new(GainParams::default()),
+            params: Arc::new(PluginParams::default()),
         }
     }
 }
 
-impl Default for GainParams {
+impl Default for PluginParams {
     fn default() -> Self {
         Self {
             gain: FloatParam::new(
