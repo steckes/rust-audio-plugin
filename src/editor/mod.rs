@@ -9,13 +9,13 @@ use nih_plug_egui::{
 };
 use toggle::toggle_ui;
 
-use crate::GainParams;
+use crate::PluginParams;
 
 mod level_meter;
 mod toggle;
 
 pub(crate) fn create(
-    params: Arc<GainParams>,
+    params: Arc<PluginParams>,
     peak_meter: Arc<AtomicF32>,
 ) -> Option<Box<dyn Editor>> {
     let egui_state = params.editor_state.clone();

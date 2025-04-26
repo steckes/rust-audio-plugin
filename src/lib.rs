@@ -5,13 +5,13 @@ use std::sync::{Arc, atomic::Ordering};
 mod editor;
 
 pub struct MyPlugin {
-    params: Arc<GainParams>,
+    params: Arc<PluginParams>,
     peak_meter_decay_factor: f32,
     peak_meter: Arc<AtomicF32>,
 }
 
 #[derive(Params)]
-struct GainParams {
+struct PluginParams {
     #[persist = "editor-state"]
     editor_state: Arc<EguiState>,
 
@@ -25,14 +25,14 @@ struct GainParams {
 impl Default for MyPlugin {
     fn default() -> Self {
         Self {
-            params: Arc::new(GainParams::default()),
+            params: Arc::new(PluginParams::default()),
             peak_meter_decay_factor: 0.9996,
             peak_meter: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
         }
     }
 }
 
-impl Default for GainParams {
+impl Default for PluginParams {
     fn default() -> Self {
         Self {
             editor_state: EguiState::from_size(400, 300),
