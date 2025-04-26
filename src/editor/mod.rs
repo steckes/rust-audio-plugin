@@ -4,7 +4,7 @@ use level_meter::PeakMeter;
 use nih_plug::{editor::Editor, prelude::AtomicF32, util};
 use nih_plug_egui::{
     create_egui_editor,
-    egui::{self, Slider, Vec2},
+    egui::{Slider, Vec2},
     resizable_window::ResizableWindow,
 };
 use toggle::toggle_ui;
@@ -72,17 +72,6 @@ pub(crate) fn create(
                                 setter.end_set_parameter(&params.mute);
                             }
                         });
-
-                        ui.add_space(10.0);
-
-                        ui.separator();
-
-                        ui.add_space(10.0);
-
-                        ui.add(egui::github_link_file!(
-                            "https://github.com/emilk/eframe_template/blob/main/",
-                            "Source code."
-                        ));
                     });
                 });
         },

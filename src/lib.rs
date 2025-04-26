@@ -138,13 +138,15 @@ impl Plugin for MyPlugin {
                     current_peak_meter * self.peak_meter_decay_factor
                 };
 
-                // Optional: Prevent decaying below near-silence, avoiding tiny non-zero values indefinitely
-                // const SILENCE_THRESHOLD: f32 = 1e-6; // Approx -120 dBFS
-                // let final_peak_meter = if new_peak_meter < SILENCE_THRESHOLD { 0.0 } else { new_peak_meter };
+                // Prevent decaying below near-silence, avoiding tiny non-zero values indefinitely
+                let new_peak_meter = if new_peak_meter < util::MINUS_INFINITY_GAIN {
+                    0.0
+                } else {
+                    new_peak_meter
+                };
 
                 // Store the new value back into the atomic peak_meter variable
-                self.peak_meter.store(new_peak_meter, Ordering::Relaxed); // Store the calculated value
-                // .store(final_peak_meter, Ordering::Relaxed); // Use this line if you add the SILENCE_THRESHOLD
+                self.peak_meter.store(new_peak_meter, Ordering::Relaxed);
             }
         }
 
