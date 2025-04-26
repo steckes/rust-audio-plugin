@@ -27,51 +27,48 @@ pub(crate) fn create(
             ResizableWindow::new("res-wind")
                 .min_size(Vec2::new(128.0, 128.0))
                 .show(ctx, egui_state.as_ref(), |ui| {
-                    ui.vertical_centered(|ui| {
-                        ui.heading("steck.tech");
+                    ui.heading("steck.tech");
 
-                        ui.add_space(10.0);
+                    ui.add_space(10.0);
 
-                        ui.horizontal(|ui| {
-                            ui.label("Gain Slider");
+                    ui.horizontal(|ui| {
+                        ui.label("Gain Slider");
 
-                            ui.add(
-                                Slider::from_get_set(-10.0..=10.0, |new_value| match new_value {
-                                    Some(new_value) => {
-                                        setter.begin_set_parameter(&params.gain);
-                                        setter.set_parameter(&params.gain, new_value as f32);
-                                        setter.end_set_parameter(&params.gain);
+                        ui.add(
+                            Slider::from_get_set(-10.0..=10.0, |new_value| match new_value {
+                                Some(new_value) => {
+                                    setter.begin_set_parameter(&params.gain);
+                                    setter.set_parameter(&params.gain, new_value as f32);
+                                    setter.end_set_parameter(&params.gain);
 
-                                        new_value
-                                    }
-                                    None => params.gain.value() as f64,
-                                })
-                                .show_value(true)
-                                .suffix(" dB"),
-                            );
-                        });
+                                    new_value
+                                }
+                                None => params.gain.value() as f64,
+                            })
+                            .show_value(true)
+                            .suffix(" dB"),
+                        );
+                    });
 
-                        ui.add_space(10.0);
+                    ui.add_space(10.0);
 
-                        ui.horizontal(|ui| {
-                            ui.label("Peak Meter");
-                            let peak_meter = util::gain_to_db(
-                                peak_meter.load(std::sync::atomic::Ordering::Relaxed),
-                            );
-                            ui.add(PeakMeter::new(-60.0..=0.0, peak_meter).show_label(false));
-                        });
+                    ui.horizontal(|ui| {
+                        ui.label("Peak Meter");
+                        let peak_meter =
+                            util::gain_to_db(peak_meter.load(std::sync::atomic::Ordering::Relaxed));
+                        ui.add(PeakMeter::new(-60.0..=0.0, peak_meter).show_label(false));
+                    });
 
-                        ui.add_space(10.0);
+                    ui.add_space(10.0);
 
-                        ui.horizontal(|ui| {
-                            ui.label("Mute");
-                            let mut mute = params.mute.value();
-                            if toggle_ui(ui, &mut mute).changed() {
-                                setter.begin_set_parameter(&params.mute);
-                                setter.set_parameter(&params.mute, mute);
-                                setter.end_set_parameter(&params.mute);
-                            }
-                        });
+                    ui.horizontal(|ui| {
+                        ui.label("Mute");
+                        let mut mute = params.mute.value();
+                        if toggle_ui(ui, &mut mute).changed() {
+                            setter.begin_set_parameter(&params.mute);
+                            setter.set_parameter(&params.mute, mute);
+                            setter.end_set_parameter(&params.mute);
+                        }
                     });
                 });
         },
