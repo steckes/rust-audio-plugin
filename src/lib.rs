@@ -1,14 +1,18 @@
 use filter::{Filter, FilterParams, FilterType};
-use nih_plug::prelude::*;
+use nih_plug::{prelude::*, util::db_to_gain};
 use nih_plug_egui::EguiState;
-use std::sync::Arc;
+use std::{fmt::Pointer, sync::Arc};
 
 mod editor;
 mod filter;
+// mod working_filter;
 
 pub struct MyPlugin {
     params: Arc<PluginParams>,
     filter: Vec<Filter>, // Filter per Channel
+    ftest: Filter,
+    ftest2: Filter,
+    sample_rate: f32,
 }
 
 #[derive(Params)]
@@ -16,14 +20,14 @@ struct PluginParams {
     #[persist = "editor-state"]
     editor_state: Arc<EguiState>,
 
+    #[id = "gain"]
+    pub gain: FloatParam,
+
     #[id = "frequency"]
     pub frequency: FloatParam,
 
     #[id = "quality"]
     pub quality: FloatParam,
-
-    #[id = "gain"]
-    pub gain: FloatParam,
 }
 
 impl Default for MyPlugin {
@@ -31,6 +35,9 @@ impl Default for MyPlugin {
         Self {
             params: Arc::new(PluginParams::default()),
             filter: Vec::new(),
+            ftest: Filter::new(FilterType::Lowpass),
+            ftest2: Filter::new(FilterType::Lowpass),
+            sample_rate: 48000.0,
         }
     }
 }
@@ -39,6 +46,17 @@ impl Default for PluginParams {
     fn default() -> Self {
         Self {
             editor_state: EguiState::from_size(400, 300),
+            gain: FloatParam::new(
+                "Gain",
+                0.0,
+                FloatRange::Linear {
+                    min: -10.0,
+                    max: 10.0,
+                },
+            )
+            .with_step_size(0.1)
+            .with_smoother(SmoothingStyle::Linear(50.0))
+            .with_unit(" dB"),
             frequency: FloatParam::new(
                 "Frequency",
                 0.0,
@@ -60,17 +78,6 @@ impl Default for PluginParams {
             )
             .with_step_size(0.01)
             .with_smoother(SmoothingStyle::Linear(50.0)),
-            gain: FloatParam::new(
-                "Gain",
-                0.0,
-                FloatRange::Linear {
-                    min: -10.0,
-                    max: 10.0,
-                },
-            )
-            .with_step_size(0.1)
-            .with_smoother(SmoothingStyle::Linear(50.0))
-            .with_unit(" dB"),
         }
     }
 }
@@ -119,12 +126,22 @@ impl Plugin for MyPlugin {
             0
         };
 
+        self.sample_rate = buffer_config.sample_rate;
+
+        self.ftest
+            .set_sample_rate(buffer_config.sample_rate)
+            .unwrap();
+        self.ftest2
+            .set_sample_rate(buffer_config.sample_rate)
+            .unwrap();
+
         // ensure there is one filter per channel
         self.filter
             .resize(num_channels, Filter::new(FilterType::Lowpass));
 
-        // set the sample_rate for each filter
+        // reset and set the sample_rate for each filter
         for filter in self.filter.iter_mut() {
+            filter.reset();
             if filter.set_sample_rate(buffer_config.sample_rate).is_err() {
                 return false;
             }
@@ -139,9 +156,9 @@ impl Plugin for MyPlugin {
         _context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
         for mut frame in buffer.iter_samples() {
-            let frequency = self.params.frequency.smoothed.next();
-            let quality = self.params.quality.smoothed.next();
-            let gain = self.params.gain.smoothed.next();
+            let frequency = self.params.frequency.value();
+            let quality = self.params.quality.value();
+            let gain = self.params.gain.value();
 
             for filter in self.filter.iter_mut() {
                 if filter
@@ -166,7 +183,6 @@ impl Plugin for MyPlugin {
 
     fn reset(&mut self) {
         for filter in self.filter.iter_mut() {
-            // clear filter states
             filter.reset();
         }
     }

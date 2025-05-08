@@ -21,7 +21,6 @@ impl std::fmt::Display for FilterError {
     }
 }
 
-#[allow(unused)]
 #[derive(Default, Copy, Clone, PartialEq)]
 pub enum FilterType {
     #[default]
@@ -131,7 +130,6 @@ impl Filter {
         }
     }
 
-    #[allow(unused)]
     pub fn set_filter_type(&mut self, filter_type: FilterType) -> Result<(), FilterError> {
         if self.filter_type != filter_type {
             self.filter_type = filter_type;
@@ -154,6 +152,13 @@ impl Filter {
             self.coeffs = Coefficients::new(self.filter_type, self.sample_rate, params)?;
         }
         Ok(())
+    }
+
+    pub fn set(&mut self, filter_type: FilterType, sample_rate: f32, params: FilterParams) {
+        self.params = params;
+        self.sample_rate = sample_rate;
+        self.filter_type = filter_type;
+        self.coeffs = Coefficients::new(filter_type, sample_rate, params).unwrap();
     }
 
     #[inline]
