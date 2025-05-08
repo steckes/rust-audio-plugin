@@ -9,18 +9,6 @@ pub enum FilterError {
     QNegative,
 }
 
-impl std::fmt::Display for FilterError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            FilterError::FrequencyOverNyqist => {
-                write!(f, "Filter frequency exceeds Nyquist frequency")
-            }
-            FilterError::FrequencyNegative => write!(f, "Filter frequency cannot be negative"),
-            FilterError::QNegative => write!(f, "Filter Q factor cannot be negative"),
-        }
-    }
-}
-
 #[allow(unused)]
 #[derive(Default, Copy, Clone, PartialEq)]
 pub enum FilterType {
@@ -91,17 +79,6 @@ impl Coefficients {
                 coeffs.m1 = 0.0;
                 coeffs.m2 = 1.0;
             }
-            FilterType::Bell => {
-                let a = 10_f32.powf(params.gain / 40.0);
-                let g = f32::tan(std::f32::consts::PI * params.frequency / sample_rate);
-                let k = 1.0 / (params.quality * a);
-                coeffs.a1 = 1.0 / (1.0 + g * (g + k));
-                coeffs.a2 = g * coeffs.a1;
-                coeffs.a3 = g * coeffs.a2;
-                coeffs.m0 = 1.0;
-                coeffs.m1 = k * (a * a - 1.0);
-                coeffs.m2 = 0.0;
-            }
             _ => todo!(),
         }
         Ok(coeffs)
@@ -135,7 +112,7 @@ impl Filter {
     pub fn set_filter_type(&mut self, filter_type: FilterType) -> Result<(), FilterError> {
         if self.filter_type != filter_type {
             self.filter_type = filter_type;
-            self.coeffs = Coefficients::new(self.filter_type, self.sample_rate, self.params)?;
+            self.update_coefficients()?;
         }
         Ok(())
     }
@@ -143,7 +120,7 @@ impl Filter {
     pub fn set_sample_rate(&mut self, sample_rate: f32) -> Result<(), FilterError> {
         if self.sample_rate != sample_rate {
             self.sample_rate = sample_rate;
-            self.coeffs = Coefficients::new(self.filter_type, self.sample_rate, self.params)?;
+            self.update_coefficients()?;
         }
         Ok(())
     }
@@ -151,7 +128,7 @@ impl Filter {
     pub fn set_params(&mut self, params: FilterParams) -> Result<(), FilterError> {
         if self.params != params {
             self.params = params;
-            self.coeffs = Coefficients::new(self.filter_type, self.sample_rate, params)?;
+            self.update_coefficients()?;
         }
         Ok(())
     }
@@ -171,6 +148,11 @@ impl Filter {
     pub fn reset(&mut self) {
         self.ic1eq = 0.0;
         self.ic2eq = 0.0;
+    }
+
+    fn update_coefficients(&mut self) -> Result<(), FilterError> {
+        self.coeffs = Coefficients::new(self.filter_type, self.sample_rate, self.params)?;
+        Ok(())
     }
 }
 
