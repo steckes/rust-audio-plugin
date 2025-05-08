@@ -1,4 +1,5 @@
-use nih_plug::{prelude::*, util::db_to_gain};
+use filter::{Filter, FilterParams, FilterType};
+use nih_plug::prelude::*;
 use nih_plug_egui::EguiState;
 use std::sync::Arc;
 
@@ -7,6 +8,7 @@ mod filter;
 
 pub struct MyPlugin {
     params: Arc<PluginParams>,
+    filter: Vec<Filter>, // Filter per Channel
 }
 
 #[derive(Params)]
@@ -14,20 +16,21 @@ struct PluginParams {
     #[persist = "editor-state"]
     editor_state: Arc<EguiState>,
 
-    #[id = "gain"]
-    pub gain: FloatParam,
-
     #[id = "frequency"]
-    pub freq: FloatParam,
+    pub frequency: FloatParam,
 
     #[id = "quality"]
     pub quality: FloatParam,
+
+    #[id = "gain"]
+    pub gain: FloatParam,
 }
 
 impl Default for MyPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(PluginParams::default()),
+            filter: Vec::new(),
         }
     }
 }
@@ -36,18 +39,7 @@ impl Default for PluginParams {
     fn default() -> Self {
         Self {
             editor_state: EguiState::from_size(400, 300),
-            gain: FloatParam::new(
-                "Gain",
-                0.0,
-                FloatRange::Linear {
-                    min: -10.0,
-                    max: 10.0,
-                },
-            )
-            .with_step_size(0.1)
-            .with_smoother(SmoothingStyle::Linear(50.0))
-            .with_unit(" dB"),
-            freq: FloatParam::new(
+            frequency: FloatParam::new(
                 "Frequency",
                 0.0,
                 FloatRange::Skewed {
@@ -68,6 +60,17 @@ impl Default for PluginParams {
             )
             .with_step_size(0.01)
             .with_smoother(SmoothingStyle::Linear(50.0)),
+            gain: FloatParam::new(
+                "Gain",
+                0.0,
+                FloatRange::Linear {
+                    min: -10.0,
+                    max: 10.0,
+                },
+            )
+            .with_step_size(0.1)
+            .with_smoother(SmoothingStyle::Linear(50.0))
+            .with_unit(" dB"),
         }
     }
 }
@@ -105,10 +108,27 @@ impl Plugin for MyPlugin {
 
     fn initialize(
         &mut self,
-        _audio_io_layout: &AudioIOLayout,
-        _buffer_config: &BufferConfig,
+        audio_io_layout: &AudioIOLayout,
+        buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
+        // determine number of input channels
+        let num_channels = if let Some(ch) = audio_io_layout.main_input_channels {
+            ch.get() as usize
+        } else {
+            0
+        };
+
+        // ensure there is one filter per channel
+        self.filter
+            .resize(num_channels, Filter::new(FilterType::Lowpass));
+
+        // set the sample_rate for each filter
+        for filter in self.filter.iter_mut() {
+            if filter.set_sample_rate(buffer_config.sample_rate).is_err() {
+                return false;
+            }
+        }
         true
     }
 
@@ -118,31 +138,38 @@ impl Plugin for MyPlugin {
         _aux: &mut AuxiliaryBuffers,
         _context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
-        for channel_samples in buffer.iter_samples() {
-            // Initialize block_peak for this channel's block
-            let mut block_peak = 0.0f32;
+        for mut frame in buffer.iter_samples() {
+            let frequency = self.params.frequency.smoothed.next();
+            let quality = self.params.quality.smoothed.next();
+            let gain = self.params.gain.smoothed.next();
 
-            // --- Gain Calculation (Your existing logic is fine) ---
-            let gain_db = self.params.gain.smoothed.next(); // Get smoothed dB value
-            let mut gain_lin = db_to_gain(gain_db); // Convert dB to linear gain factor
-
-            // --- Apply Gain and Find Peak ---
-            for sample in channel_samples {
-                // Apply gain to the sample
-                *sample *= gain_lin;
-
-                // Check if this (gained) sample is the new peak for the block
-                let sample_abs = sample.abs();
-                if sample_abs > block_peak {
-                    block_peak = sample_abs; // Update block_peak if this sample is larger
+            for filter in self.filter.iter_mut() {
+                if filter
+                    .set_params(FilterParams {
+                        frequency,
+                        quality,
+                        gain,
+                    })
+                    .is_err()
+                {
+                    return ProcessStatus::Error("Failed to set filter parameters");
                 }
+            }
+
+            for (sample, filter) in frame.iter_mut().zip(self.filter.iter_mut()) {
+                *sample = filter.tick(*sample);
             }
         }
 
         ProcessStatus::Normal
     }
 
-    fn reset(&mut self) {}
+    fn reset(&mut self) {
+        for filter in self.filter.iter_mut() {
+            // clear filter states
+            filter.reset();
+        }
+    }
 
     // This can be used for cleaning up special resources like socket connections whenever the
     // plugin is deactivated. Most plugins won't need to do anything here.
