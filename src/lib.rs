@@ -41,14 +41,14 @@ impl Default for PluginParams {
             editor_state: EguiState::from_size(400, 300),
             frequency: FloatParam::new(
                 "Frequency",
-                0.0,
+                500.0,
                 FloatRange::Skewed {
                     min: 20.0,
                     max: 20_000.0,
                     factor: 0.25,
                 },
             )
-            .with_smoother(SmoothingStyle::Logarithmic(50.0))
+            .with_smoother(SmoothingStyle::Linear(50.0))
             .with_unit(" Hz"),
             quality: FloatParam::new(
                 "Quality",
@@ -139,9 +139,9 @@ impl Plugin for MyPlugin {
         _context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
         for mut frame in buffer.iter_samples() {
-            let frequency = self.params.frequency.value();
-            let quality = self.params.quality.value();
-            let gain = self.params.gain.value();
+            let frequency = self.params.frequency.smoothed.next();
+            let quality = self.params.quality.smoothed.next();
+            let gain = self.params.gain.smoothed.next();
 
             for filter in self.filter.iter_mut() {
                 if filter
