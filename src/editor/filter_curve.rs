@@ -3,7 +3,7 @@ use egui_plot::{
     PlotPoint,
 };
 use nih_plug_egui::egui::{Ui, Vec2b};
-use num::{Float, complex::ComplexFloat};
+use num::Float;
 use std::ops::RangeInclusive;
 
 use crate::filter::{FilterParams, FilterType, filter_response};
@@ -79,12 +79,6 @@ pub fn filter_curve(ui: &mut Ui, filter_type: FilterType, params: FilterParams) 
                 response
                     .iter()
                     .map(|(x_pos, response)| [*x_pos, response.norm().log10() as f64 * 20.0])
-                    .collect::<Vec<_>>(),
-            ));
-            plot_ui.line(Line::new(
-                response
-                    .iter()
-                    .map(|(x_pos, response)| [*x_pos, response.norm().arg() as f64])
                     .collect::<Vec<_>>(),
             ));
         });
