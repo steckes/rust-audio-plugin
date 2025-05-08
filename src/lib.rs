@@ -1,13 +1,12 @@
 use nih_plug::{prelude::*, util::db_to_gain};
 use nih_plug_egui::EguiState;
-use std::sync::{Arc, atomic::Ordering};
+use std::sync::Arc;
 
 mod editor;
+mod filter;
 
 pub struct MyPlugin {
     params: Arc<PluginParams>,
-    peak_meter_decay_factor: f32,
-    peak_meter: Arc<AtomicF32>,
 }
 
 #[derive(Params)]
@@ -18,16 +17,17 @@ struct PluginParams {
     #[id = "gain"]
     pub gain: FloatParam,
 
-    #[id = "mute"]
-    pub mute: BoolParam,
+    #[id = "frequency"]
+    pub freq: FloatParam,
+
+    #[id = "quality"]
+    pub quality: FloatParam,
 }
 
 impl Default for MyPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(PluginParams::default()),
-            peak_meter_decay_factor: 0.9996,
-            peak_meter: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
         }
     }
 }
@@ -47,7 +47,27 @@ impl Default for PluginParams {
             .with_step_size(0.1)
             .with_smoother(SmoothingStyle::Linear(50.0))
             .with_unit(" dB"),
-            mute: BoolParam::new("Mute", false),
+            freq: FloatParam::new(
+                "Frequency",
+                0.0,
+                FloatRange::Skewed {
+                    min: 20.0,
+                    max: 20_000.0,
+                    factor: 0.25,
+                },
+            )
+            .with_smoother(SmoothingStyle::Logarithmic(50.0))
+            .with_unit(" Hz"),
+            quality: FloatParam::new(
+                "Quality",
+                0.71,
+                FloatRange::Linear {
+                    min: 0.1,
+                    max: 12.0,
+                },
+            )
+            .with_step_size(0.01)
+            .with_smoother(SmoothingStyle::Linear(50.0)),
         }
     }
 }
@@ -106,10 +126,6 @@ impl Plugin for MyPlugin {
             let gain_db = self.params.gain.smoothed.next(); // Get smoothed dB value
             let mut gain_lin = db_to_gain(gain_db); // Convert dB to linear gain factor
 
-            if self.params.mute.value() {
-                gain_lin = 0.0; // Apply mute if needed
-            };
-
             // --- Apply Gain and Find Peak ---
             for sample in channel_samples {
                 // Apply gain to the sample
@@ -120,33 +136,6 @@ impl Plugin for MyPlugin {
                 if sample_abs > block_peak {
                     block_peak = sample_abs; // Update block_peak if this sample is larger
                 }
-            }
-
-            // --- Peak Meter Update Logic ---
-            if self.params.editor_state.is_open() {
-                // Load the currently displayed peak value
-                let current_peak_meter = self.peak_meter.load(Ordering::Relaxed);
-
-                // Decide the new peak value: attack or decay
-                let new_peak_meter = if block_peak > current_peak_meter {
-                    // Attack phase: Current block's peak is higher than the stored peak
-                    block_peak
-                } else {
-                    // Decay phase: Current block's peak is lower.
-                    // Apply the decay factor to the *stored* peak.
-                    // Ensure `self.peak_meter_decay_factor` is set appropriately (e.g., 0.999 for slow decay)
-                    current_peak_meter * self.peak_meter_decay_factor
-                };
-
-                // Prevent decaying below near-silence, avoiding tiny non-zero values indefinitely
-                let new_peak_meter = if new_peak_meter < util::MINUS_INFINITY_GAIN {
-                    0.0
-                } else {
-                    new_peak_meter
-                };
-
-                // Store the new value back into the atomic peak_meter variable
-                self.peak_meter.store(new_peak_meter, Ordering::Relaxed);
             }
         }
 
@@ -160,7 +149,7 @@ impl Plugin for MyPlugin {
     fn deactivate(&mut self) {}
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        editor::create(self.params.clone(), self.peak_meter.clone())
+        editor::create(self.params.clone())
     }
 }
 
