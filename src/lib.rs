@@ -139,9 +139,9 @@ impl Plugin for MyPlugin {
         _context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
         for mut frame in buffer.iter_samples() {
-            let frequency = self.params.frequency.smoothed.next();
-            let quality = self.params.quality.smoothed.next();
-            let gain = self.params.gain.smoothed.next();
+            let frequency = self.params.frequency.value();
+            let quality = self.params.quality.value();
+            let gain = self.params.gain.value();
 
             for filter in self.filter.iter_mut() {
                 if filter
