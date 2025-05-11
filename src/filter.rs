@@ -1,5 +1,6 @@
 use core::f32;
 
+use nih_plug::prelude::Enum;
 use num::complex::Complex64;
 
 #[derive(Debug)]
@@ -10,18 +11,11 @@ pub enum FilterError {
 }
 
 #[allow(unused)]
-#[derive(Default, Copy, Clone, PartialEq)]
+#[derive(Default, Copy, Clone, PartialEq, Enum)]
 pub enum FilterType {
     #[default]
     Lowpass,
-    Highpass,
-    Bandpass,
-    Notch,
-    Peak,
-    Allpass,
     Bell,
-    Lowshelf,
-    Highshelf,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -79,7 +73,17 @@ impl Coefficients {
                 coeffs.m1 = 0.0;
                 coeffs.m2 = 1.0;
             }
-            _ => todo!(),
+            FilterType::Bell => {
+                let a = 10_f32.powf(params.gain / 40.0);
+                let g = f32::tan(std::f32::consts::PI * params.frequency / sample_rate);
+                let k = 1.0 / (params.quality * a);
+                coeffs.a1 = 1.0 / (1.0 + g * (g + k));
+                coeffs.a2 = g * coeffs.a1;
+                coeffs.a3 = g * coeffs.a2;
+                coeffs.m0 = 1.0;
+                coeffs.m1 = k * (a * a - 1.0);
+                coeffs.m2 = 0.0;
+            }
         }
         Ok(coeffs)
     }
@@ -171,6 +175,17 @@ pub fn filter_response(
             (g * g * (1.0 + z) * (1.0 + z))
                 / ((z - 1.0) * (z - 1.0) + g * g * (1.0 + z) * (1.0 + z) + g * k * (z * z - 1.0))
         }
-        _ => todo!(),
+        FilterType::Bell => {
+            let a = f64::sqrt(params.gain as f64);
+            let g = f64::tan(std::f64::consts::PI * params.frequency as f64 / sample_rate);
+            let k = 1.0 / params.quality as f64;
+            let z =
+                Complex64::from_polar(1.0, eval_frequency * std::f64::consts::TAU / sample_rate);
+            (g * k * (z * z - 1.0)
+                + a * (g * (1.0 + z) * ((a * a - 1.0) * k / a * (z - 1.0))
+                    + ((z - 1.0) * (z - 1.0) + g * g * (1.0 + z) * (1.0 + z))))
+                / (g * k * (z * z - 1.0)
+                    + a * ((z - 1.0) * (z - 1.0) + g * g * (z + 1.0) * (z + 1.0)))
+        }
     }
 }

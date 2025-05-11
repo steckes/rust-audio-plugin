@@ -24,6 +24,9 @@ struct PluginParams {
 
     #[id = "gain"]
     pub gain: FloatParam,
+
+    #[id = "type"]
+    pub filter_type: EnumParam<FilterType>,
 }
 
 impl Default for MyPlugin {
@@ -64,13 +67,14 @@ impl Default for PluginParams {
                 "Gain",
                 0.0,
                 FloatRange::Linear {
-                    min: -10.0,
-                    max: 10.0,
+                    min: -30.0,
+                    max: 30.0,
                 },
             )
             .with_step_size(0.1)
             .with_smoother(SmoothingStyle::Linear(50.0))
             .with_unit(" dB"),
+            filter_type: EnumParam::new("Filter Type", FilterType::Lowpass),
         }
     }
 }
@@ -138,6 +142,13 @@ impl Plugin for MyPlugin {
         _aux: &mut AuxiliaryBuffers,
         _context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
+        let filter_type = self.params.filter_type.value();
+        for filter in self.filter.iter_mut() {
+            if filter.set_filter_type(filter_type).is_err() {
+                return ProcessStatus::Error("Failed to set filter parameters");
+            }
+        }
+
         for mut frame in buffer.iter_samples() {
             let frequency = self.params.frequency.smoothed.next();
             let quality = self.params.quality.smoothed.next();

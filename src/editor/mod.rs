@@ -4,10 +4,7 @@ use filter_curve::filter_curve;
 use nih_plug::editor::Editor;
 use nih_plug_egui::{create_egui_editor, egui::Vec2, resizable_window::ResizableWindow};
 
-use crate::{
-    PluginParams,
-    filter::{FilterParams, FilterType},
-};
+use crate::{PluginParams, filter::FilterParams};
 
 mod filter_curve;
 
@@ -23,11 +20,11 @@ pub(crate) fn create(params: Arc<PluginParams>) -> Option<Box<dyn Editor>> {
                 .show(ctx, egui_state.as_ref(), |ui| {
                     filter_curve(
                         ui,
-                        FilterType::Lowpass,
+                        params.filter_type.value(),
                         FilterParams {
                             frequency: params.frequency.value(),
                             quality: params.quality.value(),
-                            gain: params.gain.value(),
+                            gain: f32::powf(10.0, params.gain.value() / 20.0),
                         },
                     );
                 });
