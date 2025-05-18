@@ -46,9 +46,9 @@ pub fn filter_curve(ui: &mut Ui, filter_type: FilterType, params: FilterParams) 
 
     let y_axes = vec![AxisHints::new_y().label("SPL").formatter(spl_formatter)];
 
-    const NUM_PLOT_POINTS: usize = 100;
+    const NUM_PLOT_POINTS: usize = 1000;
     let response = (0..NUM_PLOT_POINTS)
-        .map(|i| i as f64 / (NUM_PLOT_POINTS as f64 + 30.0))
+        .map(|i| i as f64 / (NUM_PLOT_POINTS as f64 + 300.0))
         .map(|x_pos| {
             (
                 x_pos,
